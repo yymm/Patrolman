@@ -6,9 +6,15 @@
 # config.jsonの例
 ```json
 {
-  "urls": [
-    "http://localhost:8000",
-    "http://localhost:8080"
+  "sites": [
+    {
+      "selector": "div.contents",
+      "url": "http://localhost:8000"
+    },
+    {
+      "selector": "div > ul",
+      "url": "http://localhost:8000"
+    }
   ],
   "slack": {
     "token": "<slackbotのtoken>",
