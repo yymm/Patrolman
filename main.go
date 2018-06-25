@@ -55,20 +55,15 @@ func loadConfig() (Config, error) {
 	return config, nil
 }
 
-// func getHTMLSize(url string) (int, error) {
-// 	res, err := http.Get(url)
-// 	if err != nil {
-// 		log.Printf("Error(http.Get): %v\n", err)
-// 		return 0, err
-// 	}
-// 	defer res.Body.Close()
-// 	bytes, err := ioutil.ReadAll(res.Body)
-// 	if err != nil {
-// 		log.Printf(" Error(Read HTML): %v\n", err)
-// 		return 0, err
-// 	}
-// 	return len(bytes), nil
-// }
+func getWebScraping(url string, selector string) (string, error) {
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		log.Printf("Error(goquery.NewDocument): %v\n", err)
+		return "", err
+	}
+	t := doc.Find(selector).Text()
+	return t, nil
+}
 
 func mainLoop(config *Config) {
 	t := time.Duration(config.Intervalhour * float32(time.Hour))
@@ -83,7 +78,6 @@ func mainLoop(config *Config) {
 			if err != nil {
 				break
 			}
-
 			// 更新確認
 			if previousText[i] == "" {
 				// 初期値
@@ -95,7 +89,7 @@ func mainLoop(config *Config) {
 					log.Printf("%v\n", message)
 					if config.Slack.Token != "" && config.Slack.Channelid != "" {
 						slackNotify(config.Slack.Token, config.Slack.Channelid, message)
-						slackNotify(config.Slack.Token, config.Slack.Channelid, text)
+						// slackNotify(config.Slack.Token, config.Slack.Channelid, text)
 					}
 					previousText[i] = text
 				}
@@ -104,16 +98,6 @@ func mainLoop(config *Config) {
 		// HACK: 周期処理 https://qiita.com/ruiu/items/1ea0c72088ad8f2b841e
 		time.Sleep(t)
 	}
-}
-
-func getWebScraping(url string, selector string) (string, error) {
-	doc, err := goquery.NewDocument(url)
-	if err != nil {
-		log.Printf("Error(goquery.NewDocument): %v\n", err)
-		return "", err
-	}
-	t := doc.Find(selector).Text()
-	return t, nil
 }
 
 func main() {
