@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nlopes/slack"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/nlopes/slack"
 )
 
 type Config struct {
@@ -97,10 +99,33 @@ func mainLoop(config *Config) {
 	}
 }
 
-func main() {
-	config, err := loadConfig()
+func scraping() {
+	doc, err := goquery.NewDocument("https://www.akb48.co.jp/")
 	if err != nil {
-		panic("Config File Error...")
+		fmt.Print("url scarapping failed")
 	}
-	mainLoop(&config)
+	doc.Find("#JSOK > div.wrapper > div.contents > div.contentsWrapper > div.newsWrapper > ul").Each(func(_ int, s *goquery.Selection) {
+		doc.Find("li").Each(func(_ int, s *goquery.Selection) {
+			date := s.Find("div.date").Text()
+			fmt.Println(date)
+			category := s.Find("div.category").Text()
+			fmt.Println(category)
+			s.Find("div.text > p > a").Each(func(_ int, s1 *goquery.Selection) {
+				url, _ := s1.Attr("href")
+				fmt.Println(url)
+				text := s1.Text()
+				fmt.Println(text)
+			})
+		})
+	})
+}
+
+func main() {
+	// config, err := loadConfig()
+	// if err != nil {
+	// 	panic("Config File Error...")
+	// }
+	// mainLoop(&config)
+
+	scraping()
 }
