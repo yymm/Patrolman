@@ -6,9 +6,15 @@
 # config.jsonの例
 ```json
 {
-  "urls": [
-    "http://localhost:8000",
-    "http://localhost:8080"
+  "sites": [
+    {
+      "selector": "div.contents",
+      "url": "http://localhost:8000"
+    },
+    {
+      "selector": "div > ul",
+      "url": "http://localhost:8000"
+    }
   ],
   "slack": {
     "token": "<slackbotのtoken>",
@@ -28,9 +34,4 @@ bin以下に各プラットフォーム向けのバイナリがあります。
 同階層にconfig.jsonを用意してバイナリを実行します。
 
 # 実装
-intervalHourごとにurlsのサイトのHTMLのサイズを取得し前に取得した値と変化があったら通知。
-
-# 既知の課題
-- HTMLのサイズがint型の最大値を超えたときの挙動が不明
-- 具体的にどの部分に変更があったかまではわからない
-- 非同期コンテンツがある場合、そのコンテンツの更新は多分検知できない
+intervalHourごとにselectorで指定したサイトの文字列を取得し、前に取得した値と変化があったら通知。
