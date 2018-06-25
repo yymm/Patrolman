@@ -16,7 +16,7 @@ type Config struct {
 		Token     string `json:"token"`
 		Channelid string `json:"channelid"`
 	} `json:"slack"`
-	Intervalhour time.Duration `json:"intervalhour"`
+	Intervalhour float32 `json:"intervalhour"`
 }
 
 func slackNotify(token, channelId, message string) {
@@ -66,6 +66,8 @@ func getHtmlSize(url string) (int, error) {
 }
 
 func mainLoop(config *Config) {
+	t := time.Duration(config.Intervalhour * float32(time.Hour))
+	log.Printf("%v間隔で指定ページのパトロールを開始します\n", t)
 	previousSizes := make([]int, len(config.Urls))
 	for {
 		for i, url := range config.Urls {
@@ -81,7 +83,7 @@ func mainLoop(config *Config) {
 			} else {
 				// 変更があったらslackに通知
 				if previousSizes[i] != size {
-					message := fmt.Sprintf("Change => %v (%v)", url, time.Now())
+					message := fmt.Sprintf("更新を検知しました: %v (%v)", url, time.Now())
 					log.Printf("%v\n", message)
 					if config.Slack.Token != "" && config.Slack.Channelid != "" {
 						slackNotify(config.Slack.Token, config.Slack.Channelid, message)
@@ -91,7 +93,7 @@ func mainLoop(config *Config) {
 			}
 		}
 		// HACK: 周期処理 https://qiita.com/ruiu/items/1ea0c72088ad8f2b841e
-		time.Sleep(config.Intervalhour * time.Hour)
+		time.Sleep(t)
 	}
 }
 
