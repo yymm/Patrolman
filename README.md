@@ -13,7 +13,10 @@
     },
     {
       "selector": "div > ul",
-      "url": "http://localhost:8000"
+      "url": "http://localhost:8888"
+    },
+    {
+      "url": "http://localhost:5000"
     }
   ],
   "slack": {
@@ -34,4 +37,6 @@ bin以下に各プラットフォーム向けのバイナリがあります。
 同階層にconfig.jsonを用意してバイナリを実行します。
 
 # 実装
-intervalHourごとにselectorで指定したサイトの文字列を取得し、前に取得した値と変化があったら通知。
+intervalHourごとにサイトの文字列を取得し、前に取得した値と変化があったら通知します。
+
+sites内のselectorがある場合は指定の要素の差分を使用し、selectorの指定がない場合は全文の比較を行います。

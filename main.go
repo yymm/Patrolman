@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -36,7 +37,7 @@ func slackNotify(token, channelID, message string) {
 	}
 	_, _, err := api.PostMessage(channelID, message, params)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		log.Printf("Error(slack PostMessage): %s\n", err)
 		return
 	}
 }
@@ -55,13 +56,28 @@ func loadConfig() (Config, error) {
 	return config, nil
 }
 
+func getHtml(url string) (string, error) {
+	res, err := http.Get(url)
+	if err != nil {
+		log.Printf("Error(http.Get): %v\n", err)
+		return "", err
+	}
+	defer res.Body.Close()
+	bytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf(" Error(Read HTML): %v\n", err)
+		return "", err
+	}
+	return string(bytes), nil
+}
+
 func getWebScraping(url string, selector string) (string, error) {
 	doc, err := goquery.NewDocument(url)
 	if err != nil {
 		log.Printf("Error(goquery.NewDocument): %v\n", err)
 		return "", err
 	}
-	t := doc.Find(selector).Text()
+	t := doc.Find(selector).Text() // TODO: doc.Findのエラーについて調べる
 	return t, nil
 }
 
@@ -74,9 +90,15 @@ func mainLoop(config *Config) {
 			// URL先のHTMLサイズを取得
 			// size, err := getHTMLSize(site.URL)
 			// URL先のselector文字列を取得
-			text, err := getWebScraping(site.URL, site.Selector)
-			if err != nil {
-				break
+			var text string
+			var err error
+			if site.Selector != "" {
+				text, err = getWebScraping(site.URL, site.Selector)
+				if err != nil {
+					continue
+				}
+			} else {
+				text, err = getHtml(site.URL)
 			}
 			// 更新確認
 			if previousText[i] == "" {
