@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/nlopes/slack"
 )
 
+// Config : config.json内の構造体
 type Config struct {
-	Urls  []string `json:"urls"`
+	Sites []struct {
+		Selector string `json:"selector"`
+		URL      string `json:"url"`
+	} `json:"sites"`
 	Slack struct {
 		Token     string `json:"token"`
 		Channelid string `json:"channelid"`
@@ -21,7 +24,7 @@ type Config struct {
 	Intervalhour float32 `json:"intervalhour"`
 }
 
-func slackNotify(token, channelId, message string) {
+func slackNotify(token, channelID, message string) {
 	api := slack.New(token)
 	params := slack.PostMessageParameters{
 		AsUser: true, // ユーザーとしてpostする(招待されたページのみpost可能)
@@ -31,7 +34,7 @@ func slackNotify(token, channelId, message string) {
 		//IconURL:  "https://pbs.twimg.com/media/DUnrnDHVQAAiXff.jpg",
 		//Username: "まつぼっくり",
 	}
-	_, _, err := api.PostMessage(channelId, message, params)
+	_, _, err := api.PostMessage(channelID, message, params)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 		return
@@ -52,45 +55,49 @@ func loadConfig() (Config, error) {
 	return config, nil
 }
 
-func getHtmlSize(url string) (int, error) {
-	res, err := http.Get(url)
-	if err != nil {
-		log.Printf("Error(http.Get): %v\n", err)
-		return 0, err
-	}
-	defer res.Body.Close()
-	bytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Printf(" Error(Read HTML): %v\n", err)
-		return 0, err
-	}
-	return len(bytes), nil
-}
+// func getHTMLSize(url string) (int, error) {
+// 	res, err := http.Get(url)
+// 	if err != nil {
+// 		log.Printf("Error(http.Get): %v\n", err)
+// 		return 0, err
+// 	}
+// 	defer res.Body.Close()
+// 	bytes, err := ioutil.ReadAll(res.Body)
+// 	if err != nil {
+// 		log.Printf(" Error(Read HTML): %v\n", err)
+// 		return 0, err
+// 	}
+// 	return len(bytes), nil
+// }
 
 func mainLoop(config *Config) {
 	t := time.Duration(config.Intervalhour * float32(time.Hour))
 	log.Printf("%v間隔で指定ページのパトロールを開始します\n", t)
-	previousSizes := make([]int, len(config.Urls))
+	previousText := make([]string, len(config.Sites))
 	for {
-		for i, url := range config.Urls {
+		for i, site := range config.Sites {
 			// URL先のHTMLサイズを取得
-			size, err := getHtmlSize(url)
+			// size, err := getHTMLSize(site.URL)
+			// URL先のselector文字列を取得
+			text, err := getWebScraping(site.URL, site.Selector)
 			if err != nil {
 				break
 			}
+
 			// 更新確認
-			if previousSizes[i] == 0 {
+			if previousText[i] == "" {
 				// 初期値
-				previousSizes[i] = size
+				previousText[i] = text
 			} else {
 				// 変更があったらslackに通知
-				if previousSizes[i] != size {
-					message := fmt.Sprintf("更新を検知しました: %v (%v)", url, time.Now())
+				if previousText[i] != text {
+					message := fmt.Sprintf("更新を検知しました: %v (%v)", site.URL, time.Now())
 					log.Printf("%v\n", message)
 					if config.Slack.Token != "" && config.Slack.Channelid != "" {
 						slackNotify(config.Slack.Token, config.Slack.Channelid, message)
+						slackNotify(config.Slack.Token, config.Slack.Channelid, text)
 					}
-					previousSizes[i] = size
+					previousText[i] = text
 				}
 			}
 		}
@@ -99,33 +106,20 @@ func mainLoop(config *Config) {
 	}
 }
 
-func scraping() {
-	doc, err := goquery.NewDocument("https://www.akb48.co.jp/")
+func getWebScraping(url string, selector string) (string, error) {
+	doc, err := goquery.NewDocument(url)
 	if err != nil {
-		fmt.Print("url scarapping failed")
+		log.Printf("Error(goquery.NewDocument): %v\n", err)
+		return "", err
 	}
-	doc.Find("#JSOK > div.wrapper > div.contents > div.contentsWrapper > div.newsWrapper > ul").Each(func(_ int, s *goquery.Selection) {
-		doc.Find("li").Each(func(_ int, s *goquery.Selection) {
-			date := s.Find("div.date").Text()
-			fmt.Println(date)
-			category := s.Find("div.category").Text()
-			fmt.Println(category)
-			s.Find("div.text > p > a").Each(func(_ int, s1 *goquery.Selection) {
-				url, _ := s1.Attr("href")
-				fmt.Println(url)
-				text := s1.Text()
-				fmt.Println(text)
-			})
-		})
-	})
+	t := doc.Find(selector).Text()
+	return t, nil
 }
 
 func main() {
-	// config, err := loadConfig()
-	// if err != nil {
-	// 	panic("Config File Error...")
-	// }
-	// mainLoop(&config)
-
-	scraping()
+	config, err := loadConfig()
+	if err != nil {
+		panic("Config File Error...")
+	}
+	mainLoop(&config)
 }
